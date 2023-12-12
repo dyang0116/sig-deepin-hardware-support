@@ -1,0 +1,9 @@
+[README]
+
+Archive
+  
+  backport-wifi-dkms:
+
+  archive for backport wifi dkms support,backport-wifi-dkms_x.y.z-1_all.deb
+  for simple example use 'dpkg-deb -R backport-wifi-dkms_x.y.z-1_all.deb path' to extract,
+  and use 'dpkg -b path' to make deb.
