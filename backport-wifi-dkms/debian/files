@@ -1,0 +1,5 @@
+backport-conf-bin-dbgsym_1.2.3_amd64.deb debug optional automatic=yes
+backport-conf-bin_1.2.3_amd64.deb misc optional
+backport-wifi-dkms_1.2.3_all.deb misc optional
+backport-wifi-dkms_1.2.3_amd64.buildinfo misc optional
+backport-wifi-modules_1.2.3_amd64.deb misc optional

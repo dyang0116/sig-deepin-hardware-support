@@ -1,0 +1,236 @@
+#!/bin/bash
+
+if [[ $EUID -ne 0 ]]; then
+  echo "You must run this with superuser priviliges.  Try \"sudo ./dkms-install.sh\"" 2>&1
+  exit 1
+else
+  echo "About to run dkms install steps..."
+fi
+
+DRV_NAME=backport-wifi
+DRV_VERSION=@DKMS_PACKAGE_VERSION@
+
+lspci -nn | grep "Network controller" | grep "14e4:"
+BROADCOM=$?
+
+lsusb | grep -i "2001:331A" || \
+	lsusb | grep -i "0B05:1817" || \
+	lsusb | grep -i "0B05:1852" || \
+	lsusb | grep -i "0B05:1853" || \
+	lsusb | grep -i "056E:400B" || \
+	lsusb | grep -i "056E:400D" || \
+	lsusb | grep -i "7392:A834" || \
+	lsusb | grep -i "7392:A833" || \
+	lsusb | grep -i "0BDA:8813" || \
+	lsusb | grep -i "0e66:0026" || \
+	lsusb | grep -i "2357:0106" || \
+	lsusb | grep -i "20F4:809A" || \
+	lsusb | grep -i "20F4:809B" || \
+	lsusb | grep -i "0846:9054"
+RTL8814AU=$?
+
+lsusb | grep -i "13b1:0043" || \
+	lsusb | grep -i "0b05:1841" || \
+	lsusb | grep -i "0b05:184C" || \
+	lsusb | grep -i "7392:B822" || \
+	lsusb | grep -i "7392:C822" || \
+	lsusb | grep -i "2001:331e" || \
+	lsusb | grep -i "2001:331c" || \
+	lsusb | grep -i "0846:9055" || \
+	lsusb | grep -i "2357:012D" || \
+	lsusb | grep -i "2357:0138" || \
+	lsusb | grep -i "2357:0115" || \
+	lsusb | grep -i "20F4:808A" || \
+	lsusb | grep -i "13b1:0045"
+RTL8822BU=$?
+
+lspci -nn | grep "Network controller" | grep "10ec:b852"
+RTL8852BE=$?
+
+
+lsusb | grep -i "0BDA:C82C" || \
+	lsusb | grep -i "0BDA:C82E" || \
+	lsusb | grep -i "0BDA:C812" || \
+	lsusb | grep -i "0BDA:D820" || \
+	lsusb | grep -i "0BDA:D82B" || \
+	lsusb | grep -i "13b1:0043"
+RTL88X2CU=$?
+
+lsusb | grep -i "0BDA:018C"
+RTL8188GTVU=$?
+
+lsusb | grep -i "0BDA:818B" || \
+	lsusb | grep -i "0BDA:818C"
+RTL8192EU=$?
+
+lsusb | grep -i "0BDA:0xB832" || \
+	lsusb | grep -i "0BDA:0xB83A" || \
+	lsusb | grep -i "0BDA:0xB852" || \
+	lsusb | grep -i "0BDA:0xB85A" || \
+	lsusb | grep -i "0BDA:0xA85B"
+RTL8852BU=$?
+
+# Acer notebook problem, need to disable the acer-wmi module
+echo 'blacklist acer_wmi' | tee /etc/modprobe.d/backport-wifi-dkms.conf
+
+# Fix bcmwl warning
+echo 'blacklist wl' | tee -a /etc/modprobe.d/backport-wifi-dkms.conf
+
+# Fix arm64 dkms
+if [ "$(uname -m)" = 'aarch64' ]; then
+  sed -i '/CPTCFG_ATH11K=m/d' /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/defconfigs/dkms
+  sed -i '/CPTCFG_WL1251_SDIO=m/d' /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/defconfigs/dkms
+  cp /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/dkms-arm.conf /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/dkms.conf
+  sed -i 's/obj-$(CPTCFG_RTL8821AU)/#obj-$(CPTCFG_RTL8821AU)/g' /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/drivers/net/wireless/realtek/rtlwifi/Makefile
+fi
+
+# Fix loongarch64 dkms
+if [ "$(uname -m)" = 'loongarch64' ]; then
+  cp /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/dkms-loongarch64.conf /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/dkms.conf
+  sed -i 's/obj-$(CPTCFG_RTL8821AU)/#obj-$(CPTCFG_RTL8821AU)/g' /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/drivers/net/wireless/realtek/rtlwifi/Makefile
+fi
+
+# Fix mips64 dkms
+if [ "$(uname -m)" = 'mips64' ]; then
+  cp /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/dkms-mips64.conf /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/dkms.conf
+fi
+if [ "$(uname -r)" = '5.10.0-arm64-desktop' ]; then
+  sed -i '/, select_queue_fallback_t fallback/d' /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/drivers/net/wireless/realtek/rtlwifi/rtl8821cu/os_dep/linux/os_intfs.c
+  sed -i 's/if (!access_ok(VERIFY_READ, priv_cmd.buf, priv_cmd.total_len)) {/if (!access_ok(priv_cmd.buf, priv_cmd.total_len)) {/g' /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/drivers/net/wireless/realtek/rtlwifi/rtl8821cu/os_dep/linux/rtw_android.c
+
+  sed -i '/, select_queue_fallback_t fallback/d' /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/drivers/net/wireless/realtek/rtlwifi/rtl8852be/os_dep/linux/os_intfs.c
+  sed -i 's/if (!access_ok(VERIFY_READ, priv_cmd.buf, priv_cmd.total_len)) {/if (!access_ok(priv_cmd.buf, priv_cmd.total_len)) {/g' /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/drivers/net/wireless/realtek/rtlwifi/rtl8852be/os_dep/linux/rtw_android.c
+fi
+
+if [ "$(uname -r)" = '5.10.0-amd64-desktop' ]; then
+  sed -i '/, select_queue_fallback_t fallback/d' /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/drivers/net/wireless/realtek/rtlwifi/rtl8821cu/os_dep/linux/os_intfs.c
+  sed -i 's/if (!access_ok(VERIFY_READ, priv_cmd.buf, priv_cmd.total_len)) {/if (!access_ok(priv_cmd.buf, priv_cmd.total_len)) {/g' /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/drivers/net/wireless/realtek/rtlwifi/rtl8821cu/os_dep/linux/rtw_android.c
+
+  sed -i '/, select_queue_fallback_t fallback/d' /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/drivers/net/wireless/realtek/rtlwifi/rtl8852be/os_dep/linux/os_intfs.c
+  sed -i 's/if (!access_ok(VERIFY_READ, priv_cmd.buf, priv_cmd.total_len)) {/if (!access_ok(priv_cmd.buf, priv_cmd.total_len)) {/g' /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/drivers/net/wireless/realtek/rtlwifi/rtl8852be/os_dep/linux/rtw_android.c
+fi
+dkms add -m ${DRV_NAME} -v ${DRV_VERSION}
+if [ $BROADCOM -eq 0 ]; then
+  echo "broadcom wireless chips, please install broadcom-sta-dkms."
+elif [ $RTL8814AU -eq 0 ]; then
+  if [ -d "/usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/realtek/rtl8814au" ]
+  then
+	  bash /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/realtek/rtl8814au/install-driver.sh
+  else
+	  echo "failed because of rtl8814 missing!"
+  fi
+elif [ $RTL8822BU -eq 0 ]; then
+  if [ -d "/usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/realtek/rtl88x2bu" ]
+  then
+	  bash /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/realtek/rtl88x2bu/install-driver.sh
+  else
+	  echo "failed because of rtl88x2bu missing!"
+  fi
+elif [ $RTL88X2CU -eq 0 ]; then
+  if [ -d "/usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/realtek/rtl88x2cu" ]
+  then
+	  bash /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/realtek/rtl88x2cu/install-driver.sh
+  else
+	  echo "failed because of rtl88x2cu missing!"
+  fi
+elif [ $RTL8188GTVU -eq 0 ]; then
+  if [ -d "/usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/realtek/rtl8188gtvu" ]
+  then
+	  bash /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/realtek/rtl8188gtvu/install-driver.sh
+  else
+	  echo "failed because of rtl8188gtvu missing!"
+  fi
+elif [ $RTL8192EU -eq 0 ]; then
+  if [ -d "/usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/realtek/rtl8192eu" ]
+  then
+	  bash /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/realtek/rtl8192eu/install-driver.sh
+  else
+	  echo "failed because of rtl8192eu missing!"
+  fi
+elif [ $RTL8852BU -eq 0 ]; then
+  if [ -d "/usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/realtek/rtl8852bu" ]
+  then
+	  bash /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/realtek/rtl8852bu/install-driver.sh
+  else
+	  echo "failed because of rtl8852bu missing!"
+  fi                
+elif [ $(uname -r) = "5.10.0-amd64-desktop" ]; then
+  mkdir -p /lib/modules/$(uname -r)/updates
+  if [ -d /lib/modules/$(uname -r)/updates/wifi-dkms ]; then
+	  rm -rf /lib/modules/$(uname -r)/updates/wifi-dkms
+  fi
+
+  mkdir -p /lib/modules/$(uname -r)/updates/wifi-dkms
+
+  dkms build -m ${DRV_NAME} -v ${DRV_VERSION}
+  bash /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/scripts/dkms install -m ${DRV_NAME} -v ${DRV_VERSION} --force
+
+  if [ -e /boot/System.map-$(uname -r) ]; then
+	  depmod -a -F /boot/System.map-$(uname -r) $(uname -r) || true
+  fi
+elif [ $(uname -r) = "4.19.0-amd64-desktop" ]; then
+  diff /usr/src/linux-headers-$(uname -r)/Module.symvers /usr/src/backport-wifi-modules-@DKMS_PACKAGE_VERSION@/4.19.0-amd64-desktop-Module.symvers
+  if [ $? -eq 1 ]; then
+	need_rebuild=0
+
+	if [ -x /usr/bin/mktemp ]; then
+		difffile=$(/usr/bin/mktemp)||exit 1
+		diff /usr/src/linux-headers-$(uname -r)/Module.symvers /usr/src/backport-wifi-modules-@DKMS_PACKAGE_VERSION@/4.19.0-amd64-desktop-Module.symvers > difffile
+		for symvers_check in `cat /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/README-KABI.md`
+		do
+			cat difffile | grep -w $symvers_check
+			if [ $? -eq 0 ]; then
+				echo "The following symbol is different:"
+				echo $symvers_check
+				need_rebuild=1
+				break
+			fi
+		done
+		rm difffile
+	else
+		need_rebuild=1
+	fi
+	if [ $need_rebuild -eq 1 ]; then
+		dkms build -m ${DRV_NAME} -v ${DRV_VERSION}
+  		bash /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/scripts/dkms install -m ${DRV_NAME} -v ${DRV_VERSION} --force
+	else
+		mkdir -p /lib/modules/$(uname -r)/updates
+		if [ -d /lib/modules/$(uname -r)/updates/wifi-dkms ]; then
+			rm -rf /lib/modules/$(uname -r)/updates/wifi-dkms
+		fi
+		mkdir -p /lib/modules/$(uname -r)/updates/wifi-dkms
+		tar -xf /usr/src/backport-wifi-modules-@DKMS_PACKAGE_VERSION@/$(uname -r)/x86_64/module/modversion-wifi-dkms/modules.tar.gz -C /lib/modules/$(uname -r)/updates/wifi-dkms/
+		if [ -e /boot/System.map-$(uname -r) ]; then
+			depmod -a -F /boot/System.map-$(uname -r) $(uname -r) || true
+		fi
+	fi
+  else
+  	mkdir -p /lib/modules/$(uname -r)/updates
+	if [ -d /lib/modules/$(uname -r)/updates/wifi-dkms ]; then
+		rm -rf /lib/modules/$(uname -r)/updates/wifi-dkms
+  	fi
+
+  	mkdir -p /lib/modules/$(uname -r)/updates/wifi-dkms
+
+  	cat /boot/config-$(uname -r) | grep "CONFIG_MODVERSIONS=y"
+  	if [ $? -eq 0 ]; then
+  		tar -xf /usr/src/backport-wifi-modules-@DKMS_PACKAGE_VERSION@/$(uname -r)/x86_64/module/modversion-wifi-dkms/modules.tar.gz -C /lib/modules/$(uname -r)/updates/wifi-dkms/
+  	else
+  		dkms build -m ${DRV_NAME} -v ${DRV_VERSION}
+  		bash /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/scripts/dkms install -m ${DRV_NAME} -v ${DRV_VERSION} --force
+  	fi
+
+  	if [ -e /boot/System.map-$(uname -r) ]; then
+		  depmod -a -F /boot/System.map-$(uname -r) $(uname -r) || true
+  	fi
+  fi
+else
+  dkms build -m ${DRV_NAME} -v ${DRV_VERSION}
+  bash /usr/src/backport-wifi-@DKMS_PACKAGE_VERSION@/scripts/dkms install -m ${DRV_NAME} -v ${DRV_VERSION} --force
+fi
+
+RESULT=$?
+
+echo "Finished running dkms install steps."
+
+#  exit $RESULT

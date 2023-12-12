@@ -1,0 +1,104 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+include /usr/share/dpkg/default.mk
+
+bin_target	:= usr/sbin/
+export DH_VERBOSE = 1
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+VERSION ?= $(shell dpkg-parsechangelog | sed -rne 's/^Version: ([0-9.]+).*$$/\1/p')
+
+%:
+	dh $@ --with dkms
+
+override_dh_auto_configure:
+	sed -e 's,@DKMS_PACKAGE_VERSION@,$(VERSION),g' \
+		dkms.conf.in > dkms.conf
+
+	sed -e 's,@DKMS_PACKAGE_VERSION@,$(VERSION),g' \
+		dkms-arm.conf.in > dkms-arm.conf
+
+	sed -e 's,@DKMS_PACKAGE_VERSION@,$(VERSION),g' \
+		dkms-loongarch64.conf.in > dkms-loongarch64.conf
+
+	sed -e 's,@DKMS_PACKAGE_VERSION@,$(VERSION),g' \
+		dkms-mips64.conf.in > dkms-mips64.conf
+
+	sed -e 's,@DKMS_PACKAGE_VERSION@,$(VERSION),g' \
+		debian/backport-wifi-dkms.prerm.in > \
+		debian/backport-wifi-dkms.prerm
+
+	sed -e 's,@DKMS_PACKAGE_VERSION@,$(VERSION),g' \
+		debian/backport-wifi-dkms.postinst.in > \
+		debian/backport-wifi-dkms.postinst
+
+	sed -e 's,@DKMS_PACKAGE_VERSION@,$(VERSION),g' \
+		realtek/rtl8814au/install-driver.sh.in > \
+		realtek/rtl8814au/install-driver.sh
+
+	sed -e 's,@DKMS_PACKAGE_VERSION@,$(VERSION),g' \
+		realtek/rtl88x2bu/install-driver.sh.in > \
+		realtek/rtl88x2bu/install-driver.sh
+	#
+	sed -e 's,@DKMS_PACKAGE_VERSION@,$(VERSION),g' \
+		realtek/rtl88x2cu/install-driver.sh.in > \
+		realtek/rtl88x2cu/install-driver.sh
+
+	sed -e 's,@DKMS_PACKAGE_VERSION@,$(VERSION),g' \
+		realtek/rtl8188gtvu/install-driver.sh.in > \
+		realtek/rtl8188gtvu/install-driver.sh
+
+	sed -e 's,@DKMS_PACKAGE_VERSION@,$(VERSION),g' \
+		realtek/rtl8192eu/install-driver.sh.in > \
+		realtek/rtl8192eu/install-driver.sh
+
+	sed -e 's,@DKMS_PACKAGE_VERSION@,$(VERSION),g' \
+		realtek/rtl8852bu/install-driver.sh.in > \
+		realtek/rtl8852bu/install-driver.sh
+
+override_dh_auto_install:
+	dh_install -pbackport-wifi-dkms    backport-include/      usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    compat/                usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    defconfigs/            usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    dkms.conf              usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    Documentation/         usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    drivers/               usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    include/               usr/src/backport-wifi-$(VERSION)
+#	dh_install -pbackport-wifi-dkms    kconf/                 usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    Kconfig                usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    Kconfig.local          usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    Kconfig.package.hacks  usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    Kconfig.sources        usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    LICENSES/              usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    realtek/               usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    local-symbols          usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    MAINTAINERS            usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    Makefile               usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    Makefile.build         usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    Makefile.kernel        usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    Makefile.real          usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    net/                   usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    scripts/               usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    versions               usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    dkms-arm.conf          usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    dkms-loongarch64.conf          usr/src/backport-wifi-$(VERSION)
+	dh_install -pbackport-wifi-dkms    dkms-mips64.conf          usr/src/backport-wifi-$(VERSION)
+	dh_install -p backport-wifi-modules    4.19.0-amd64-desktop-Module.symvers          usr/src/backport-wifi-modules-$(VERSION)
+	dh_install -p backport-wifi-dkms    README-KABI.md          usr/src/backport-wifi-$(VERSION)
+	dh_install -p backport-conf-bin kconf/conf $(bin_target)
+	dh_install -p backport-conf-bin kconf/mconf $(bin_target)
+	dh_install -p backport-wifi-modules 4.19.0-amd64-desktop/  usr/src/backport-wifi-modules-$(VERSION)
+
+override_dh_dkms:
+	dh_dkms -V
+
+override_dh_auto_build:
+	make -C kconf/ conf
+	make -C kconf/ mconf
+
+override_dh_auto_clean:
+	make -C kconf/ clean
+
+override_dh_auto_test:
+	:

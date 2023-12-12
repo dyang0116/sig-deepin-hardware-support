@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Bus Devices
+#
+
+menu "Bus devices"
+
+source "drivers/bus/mhi/Kconfig"
+
+endmenu

@@ -1,0 +1,75 @@
+Source: backport-wifi-dkms
+Section: misc
+Priority: optional
+Maintainer: Hao Chen <chenhaoa@uniontech.com>
+Build-Depends: debhelper (>= 10),
+                dkms,
+                flex,
+                bison,
+                libbison-dev,
+                bc,
+                libncurses-dev,
+                build-essential,
+Standards-Version: 4.3.0
+Vcs-Browser: https://github.com
+Vcs-Git: https://github.com
+Homepage: https://github.com/chaoshuaihaohao/linux-backports
+
+Package: backport-conf-bin
+Architecture: linux-any
+Multi-Arch: foreign
+Depends: libc6, flex, bison, libbison-dev, dkms, ${misc:Depends},
+Provides: backport-conf-bin
+Description: conf bin to build and install backport-wifi.
+ This package contains the conf bin to build and install backport-wifi.
+
+Package: backport-wifi-modules
+Architecture: linux-any
+Multi-Arch: foreign
+Depends: ${misc:Depends}, backport-wifi-dkms, 
+Provides: backport-wifi-modules
+Description: driver which compiled by backport-wifi.
+ This package contains the kernel ko compile from backport-wifi.
+
+Package: backport-wifi-dkms
+Architecture: all
+Multi-Arch: foreign
+Conflicts: rtw89-dkms,
+           rtlwifi-dkms,
+           backport-iwlwifi-dkms,
+           rtl8192eu-dkms,
+           rtl8188eus-dkms,
+           rtl8821cu-dkms,
+           rtl8821au-dkms,
+           rtl8852be-dkms,
+           rtl8814au-dkms,
+           rtl88x2bu-dkms,
+           rtl88x2cu-dkms,
+           rtl8188gtvu-dkms,
+           rtl8852bu-dkms,
+           rtl8852ae-dkms,
+Replaces: rtw89-dkms,
+          rtlwifi-dkms,
+          backport-iwlwifi-dkms,
+          rtl8192eu-dkms,
+          rtl8188eus-dkms,
+          rtl8821cu-dkms,
+          rtl8821au-dkms,
+          rtl8852be-dkms,
+          rtl8814au-dkms,
+          rtl88x2bu-dkms,
+          rtl88x2cu-dkms,
+          rtl8188gtvu-dkms,
+          rtl8852bu-dkms,
+          rtl8852ae-dkms,
+Depends: backport-conf-bin, backport-wifi-modules (>= 1.2.3), flex, bison, libbison-dev, dkms, ${misc:Depends},
+Provides: backport-wifi-module
+Description: DKMS files to build and install backport-wifi.
+ The driver provides the driver for USB wifi adapter.
+ .
+ This package contains the DKMS files to build and install backport-wifi.
+ .
+ To install this package, you have to install the header files for your
+ current kernel manually (usually included in the "linux-headers-<your
+ architecture>").
+

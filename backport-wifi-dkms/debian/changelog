@@ -1,0 +1,190 @@
+backport-wifi-dkms (1.2.2) unstable; urgency=medium
+
+  * feat: remove old wireless and other drivers noneed
+  * feat: disable generate debug symbols
+  * feat: remove wireless/ti platform
+  * feat: remove p54 and hostap 
+  * feat: remove ath5k r8188eu kaweth
+  * feat: backport mt76 from 5.18 port
+
+ -- Guan Wentao <guanwentao@uniontech.com>  Wed, 01 Nov 2023 12:21:00 +0800
+
+backport-wifi-dkms (1.1.1) unstable; urgency=medium
+
+  * feat: add 8852be and fix arm64 5.10 port
+
+ -- Guan Wentao <guanwentao@uniontech.com>  Tue, 18 Jul 2023 11:00:00 +0800
+
+backport-wifi-dkms (1.0.16) unstable; urgency=medium
+
+  * fix: Fix the KABI optimize problem on 5.10
+
+ -- Guan Wentao <guanwentao@uniontech.com>  Wed, 24 May 2023 11:00:00 +0800
+
+backport-wifi-dkms (1.0.15) unstable; urgency=medium
+
+  * feat: strip removes the debug information of ko
+    and reduces the installation volume
+  * fix: Fix the problem that mt7921 cannot connect
+    to wifi on 4.19
+
+ -- Meng Tang <tangmeng@uniontech.com>  Thu, 09 Mar 2023 11:01:31 +0800
+
+backport-wifi-dkms (1.0.14) unstable; urgency=medium
+
+  * feat: Uninstall the rtl8852ae-dkms when installing
+
+ -- Meng Tang <tangmeng@uniontech.com>  Wed, 04 Jan 2023 10:06:45 +0800
+
+backport-wifi-dkms (1.0.13) unstable; urgency=medium
+
+  * feat: Delete the ko file when uninstalling
+  * feat: feat 8821cu for kernel 4.19 and 5.10
+  * fix: rtl8821cu compile
+  * feat: add arm64 support(MTK7921/MTK7922)
+  * fix: Fix issues with bcmwl and remove in prerm
+
+ -- Meng Tang <tangmeng@uniontech.com>  Fri, 09 Dec 2022 15:07:08 +0800
+
+backport-wifi-dkms (1.0.12) unstable; urgency=medium
+
+  * dkms optimization
+    - Optimized for the 5.10 kernel version of the x86
+      environment. When the kernel is updated after
+      optimization, it will cooperate with the improved
+      dkms. If the kabi does not change, the driver will
+      not be recompiled. Only when the kabi changes will
+      trigger the recompilation, thereby optimizing the
+      driver installation time.
+
+ -- Meng Tang <tangmeng@uniontech.com>  Fri, 23 Sep 2022 14:26:42 +0800
+
+backport-wifi-dkms (1.0.11) unstable; urgency=medium
+
+  * Feat support for rtl88x2cu
+  * Feat support for rtl8188gtvu
+  * Feat support for rtl8192eu
+  * Feat support for rtl8852bu
+  * upgrade for rtl88x2bu
+  * Increase the conflict of the following packages
+    to prevent unpredictable problems.
+    - rtl88x2cu-dkms,
+    - rtl8188gtvu-dkms,
+    - rtl8852bu-dkms,
+  * The following packages can be supported in this package, if
+    these packages are installed first, they will be replaced
+    - rtl88x2cu-dkms,
+    - rtl8188gtvu-dkms,
+    - rtl8852bu-dkms,
+
+ -- Yuanzhi Wang <wangyuanzhi@uniontech.com>  Mon, 22 Aug 2022 17:12:55 +0800
+
+backport-wifi-dkms (1.0.10) unstable; urgency=medium
+
+  * Fix 8821ce isn't support ref6
+  * Feat support for 8821au and 8821cu
+  * Feat support for 8814au
+  * Feat support for 8822bu
+  * Feat support for 8852be
+  * Increase the conflict of the following packages
+    to prevent unpredictable problems.
+    - rtw89-dkms,
+    - rtlwifi-dkms,
+    - backport-iwlwifi-dkms,
+    - rtl8192eu-dkms,
+    - rtl8188eus-dkms,
+    - rtl8821cu-dkms,
+    - rtl8821au-dkms,
+    - rtl8852be-dkms,
+    - rtl8814au-dkms,
+    - rtl88x2bu-dkms,
+  * The following packages can be supported in this package, if
+    these packages are installed first, they will be replaced
+    - rtw89-dkms,
+    - rtlwifi-dkms,
+    - backport-iwlwifi-dkms,
+    - rtl8192eu-dkms,
+    - rtl8188eus-dkms,
+    - rtl8821cu-dkms,
+    - rtl8821au-dkms,
+    - rtl8852be-dkms,
+    - rtl8814au-dkms,
+    - rtl88x2bu-dkms,
+
+ -- Meng Tang <tangmeng@uniontech.com>  Fri, 01 Jul 2022 16:01:39 +0800
+
+backport-wifi-dkms (1.0.9) unstable; urgency=medium
+
+  * Fix compilation error in non-developer mode
+
+ -- Meng Tang <tangmeng@uniontech.com>  Mon, 27 Jun 2022 19:29:48 +0800
+
+backport-wifi-dkms (1.0.8) unstable; urgency=medium
+
+  * Fix intel wifi problem
+  * Feat for usb net
+  * Prevent installation failed when kernel update
+
+ -- Meng Tang <tangmeng@uniontech.com>  Wed, 15 Jun 2022 14:46:18 +0800
+
+backport-wifi-dkms (1.0.7) unstable; urgency=medium
+
+  * Fix the problem caused by installed the iwlmvm.ko
+  * Added BUILD_EXCLUSIVE_KERNEL parameter
+
+ -- Meng Tang <tangmeng@uniontech.com>  Tue, 07 Jun 2022 15:58:41 +0800
+
+backport-wifi-dkms (1.0.6) unstable; urgency=medium
+
+  * Fixed the problem on the Acer NoteBook 
+  * Do not update install the iwlmvm.ko
+  * Fixed the probe problem on the mt7921e
+
+ -- Meng Tang <tangmeng@uniontech.com>  Mon, 23 May 2022 15:57:51 +0800
+
+backport-wifi-dkms (1.0.4) unstable; urgency=medium
+
+  * The broadcom wireless network card driver is provided by the
+    broadcom-sta-dkms package.
+  * The ath series wireless network card cannot be driven after
+    installation, temporarily avoid it
+  * The original 5.10 kernel of the following devices can be used,
+    and there are problems after the upgrade and installation, so
+    I add blacklist. When the machine uses these types of network
+    cards, backport-wifi-dkms will not be installed. The blacklist
+    is as follows:
+    - wireless 7265
+      * 8086:095a
+      * 8086:095b
+    - wireless AC 3168NGW
+      * 8086:24fb
+    - wireless Wi-Fi 6 AX201
+      * 8086:43f0
+      * 8086:4df0
+      * 8086:a0f0
+      * 8086:02f0
+    - Broadcom Inc
+      * vendor id is 14e4
+    - ath wireless
+      * vendor id is 168c
+
+ -- Meng Tang <tangmeng@uniontech.com>  Fri, 20 May 2022 14:54:31 +0800
+
+backport-wifi-dkms (1.0.2) unstable; urgency=medium
+
+  * Compatibility improvement
+  * fix some chipset problem in kernel-5.10
+
+ -- Meng Tang <tangmeng@uniontech.com>  Wed, 18 May 2022 09:12:56 +0800
+
+backport-wifi-dkms (1.0.1) unstable; urgency=medium
+
+  * Solve the problem of preinstallation failure
+
+ -- Hao Chen <chenhaoa@uniontech.com>  Tue, 17 May 2022 13:18:58 +0800
+
+backport-wifi-dkms (1.0.0) unstable; urgency=medium
+
+  * Backport wifi from kernel v5.15 
+
+ -- Hao Chen <chenhaoa@uniontech.com>  Tue, 29 Mar 2022 14:57:12 +0800
