@@ -24,4 +24,8 @@
 #define BITS_PER_TYPE(type) (sizeof(type) * BITS_PER_BYTE)
 #endif
 
+#ifndef BITS_TO_BYTES
+#define BITS_TO_BYTES(nr) DIV_ROUND_UP(nr, BITS_PER_TYPE(char))
+#endif
+
 #endif /* __BACKPORT_BITOPS_H */
