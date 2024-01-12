@@ -41,4 +41,9 @@ int __must_check kstrtobool_from_user(const char __user *s, size_t count, bool *
 
 #endif
 
+#if LINUX_VERSION_IS_LESS(5,4,0)
+#define non_block_start() do { } while (0)
+#define non_block_end() do { } while (0)
+#endif
+
 #endif /* __BACKPORT_KERNEL_H */
