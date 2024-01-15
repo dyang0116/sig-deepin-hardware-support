@@ -18,7 +18,7 @@ rtw89_cam_get_sec_key_cmd(struct rtw89_dev *rtwdev,
 	u8 *cmd;
 	int i, j;
 
-	skb = rtw89_fw_h2c_alloc_skb_with_hdr(cmd_len);
+	skb = rtw89_fw_h2c_alloc_skb_with_hdr(rtwdev, cmd_len);
 	if (!skb)
 		return NULL;
 
@@ -244,6 +244,12 @@ static int rtw89_cam_attach_sec_cam(struct rtw89_dev *rtwdev,
 	addr_cam->sec_ent[key_idx] = sec_cam->sec_cam_idx;
 	addr_cam->sec_entries[key_idx] = sec_cam;
 	set_bit(key_idx, addr_cam->sec_cam_map);
+	ret = rtw89_chip_h2c_dctl_sec_cam(rtwdev, rtwvif, rtwsta);
+	if (ret) {
+		rtw89_err(rtwdev, "failed to update dctl cam sec entry: %d\n",
+			  ret);
+		return ret;
+	}
 	ret = rtw89_fw_h2c_cam(rtwdev, rtwvif, rtwsta, NULL);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to update addr cam sec entry: %d\n",
@@ -320,6 +326,7 @@ int rtw89_cam_sec_key_add(struct rtw89_dev *rtwdev,
 			  struct ieee80211_sta *sta,
 			  struct ieee80211_key_conf *key)
 {
+	const struct rtw89_chip_info *chip = rtwdev->chip;
 	u8 hw_key_type;
 	bool ext_key = false;
 	int ret;
@@ -353,7 +360,8 @@ int rtw89_cam_sec_key_add(struct rtw89_dev *rtwdev,
 		return -EOPNOTSUPP;
 	}
 
-	key->flags |= IEEE80211_KEY_FLAG_GENERATE_IV;
+	if (!chip->hw_sec_hdr)
+		key->flags |= IEEE80211_KEY_FLAG_GENERATE_IV;
 
 	ret = rtw89_cam_sec_key_install(rtwdev, vif, sta, key, hw_key_type,
 					ext_key);
@@ -396,6 +404,9 @@ int rtw89_cam_sec_key_del(struct rtw89_dev *rtwdev,
 	clear_bit(key_idx, addr_cam->sec_cam_map);
 	addr_cam->sec_entries[key_idx] = NULL;
 	if (inform_fw) {
+		ret = rtw89_chip_h2c_dctl_sec_cam(rtwdev, rtwvif, rtwsta);
+		if (ret)
+			rtw89_err(rtwdev, "failed to update dctl cam del key: %d\n", ret);
 		ret = rtw89_fw_h2c_cam(rtwdev, rtwvif, rtwsta, NULL);
 		if (ret)
 			rtw89_err(rtwdev, "failed to update cam del key: %d\n", ret);
@@ -421,10 +432,8 @@ static void rtw89_cam_reset_key_iter(struct ieee80211_hw *hw,
 				     void *data)
 {
 	struct rtw89_dev *rtwdev = (struct rtw89_dev *)data;
-	struct rtw89_vif *rtwvif = (struct rtw89_vif *)vif->drv_priv;
 
 	rtw89_cam_sec_key_del(rtwdev, vif, sta, key, false);
-	rtw89_cam_deinit(rtwdev, rtwvif);
 }
 
 void rtw89_cam_deinit_addr_cam(struct rtw89_dev *rtwdev,
@@ -436,15 +445,22 @@ void rtw89_cam_deinit_addr_cam(struct rtw89_dev *rtwdev,
 	clear_bit(addr_cam->addr_cam_idx, cam_info->addr_cam_map);
 }
 
-void rtw89_cam_deinit(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
+void rtw89_cam_deinit_bssid_cam(struct rtw89_dev *rtwdev,
+				struct rtw89_bssid_cam_entry *bssid_cam)
 {
 	struct rtw89_cam_info *cam_info = &rtwdev->cam_info;
+
+	bssid_cam->valid = false;
+	clear_bit(bssid_cam->bssid_cam_idx, cam_info->bssid_cam_map);
+}
+
+void rtw89_cam_deinit(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
+{
 	struct rtw89_addr_cam_entry *addr_cam = &rtwvif->addr_cam;
 	struct rtw89_bssid_cam_entry *bssid_cam = &rtwvif->bssid_cam;
 
 	rtw89_cam_deinit_addr_cam(rtwdev, addr_cam);
-	bssid_cam->valid = false;
-	clear_bit(bssid_cam->bssid_cam_idx, cam_info->bssid_cam_map);
+	rtw89_cam_deinit_bssid_cam(rtwdev, bssid_cam);
 }
 
 void rtw89_cam_reset_keys(struct rtw89_dev *rtwdev)
@@ -472,6 +488,20 @@ static int rtw89_cam_get_avail_addr_cam(struct rtw89_dev *rtwdev,
 	return 0;
 }
 
+static u8 rtw89_get_addr_cam_entry_size(struct rtw89_dev *rtwdev)
+{
+	const struct rtw89_chip_info *chip = rtwdev->chip;
+
+	switch (chip->chip_id) {
+	case RTL8852A:
+	case RTL8852B:
+	case RTL8851B:
+		return ADDR_CAM_ENT_SIZE;
+	default:
+		return ADDR_CAM_ENT_SHORT_SIZE;
+	}
+}
+
 int rtw89_cam_init_addr_cam(struct rtw89_dev *rtwdev,
 			    struct rtw89_addr_cam_entry *addr_cam,
 			    const struct rtw89_bssid_cam_entry *bssid_cam)
@@ -480,6 +510,12 @@ int rtw89_cam_init_addr_cam(struct rtw89_dev *rtwdev,
 	int i;
 	int ret;
 
+	if (unlikely(addr_cam->valid)) {
+		rtw89_debug(rtwdev, RTW89_DBG_FW,
+			    "addr cam is already valid; skip init\n");
+		return 0;
+	}
+
 	ret = rtw89_cam_get_avail_addr_cam(rtwdev, &addr_cam_idx);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to get available addr cam\n");
@@ -487,7 +523,7 @@ int rtw89_cam_init_addr_cam(struct rtw89_dev *rtwdev,
 	}
 
 	addr_cam->addr_cam_idx = addr_cam_idx;
-	addr_cam->len = ADDR_CAM_ENT_SIZE;
+	addr_cam->len = rtw89_get_addr_cam_entry_size(rtwdev);
 	addr_cam->offset = 0;
 	addr_cam->valid = true;
 	addr_cam->addr_mask = 0;
@@ -524,12 +560,19 @@ static int rtw89_cam_get_avail_bssid_cam(struct rtw89_dev *rtwdev,
 	return 0;
 }
 
-static int rtw89_cam_init_bssid_cam(struct rtw89_dev *rtwdev,
-				    struct rtw89_vif *rtwvif)
+int rtw89_cam_init_bssid_cam(struct rtw89_dev *rtwdev,
+			     struct rtw89_vif *rtwvif,
+			     struct rtw89_bssid_cam_entry *bssid_cam,
+			     const u8 *bssid)
 {
-	struct rtw89_bssid_cam_entry *bssid_cam = &rtwvif->bssid_cam;
 	u8 bssid_cam_idx;
 	int ret;
+
+	if (unlikely(bssid_cam->valid)) {
+		rtw89_debug(rtwdev, RTW89_DBG_FW,
+			    "bssid cam is already valid; skip init\n");
+		return 0;
+	}
 
 	ret = rtw89_cam_get_avail_bssid_cam(rtwdev, &bssid_cam_idx);
 	if (ret) {
@@ -542,7 +585,7 @@ static int rtw89_cam_init_bssid_cam(struct rtw89_dev *rtwdev,
 	bssid_cam->len = BSSID_CAM_ENT_SIZE;
 	bssid_cam->offset = 0;
 	bssid_cam->valid = true;
-	ether_addr_copy(bssid_cam->bssid, rtwvif->bssid);
+	ether_addr_copy(bssid_cam->bssid, bssid);
 
 	return 0;
 }
@@ -560,7 +603,7 @@ int rtw89_cam_init(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 	struct rtw89_bssid_cam_entry *bssid_cam = &rtwvif->bssid_cam;
 	int ret;
 
-	ret = rtw89_cam_init_bssid_cam(rtwdev, rtwvif);
+	ret = rtw89_cam_init_bssid_cam(rtwdev, rtwvif, bssid_cam, rtwvif->bssid);
 	if (ret) {
 		rtw89_err(rtwdev, "failed to init bssid cam\n");
 		return ret;
@@ -576,16 +619,24 @@ int rtw89_cam_init(struct rtw89_dev *rtwdev, struct rtw89_vif *rtwvif)
 }
 
 int rtw89_cam_fill_bssid_cam_info(struct rtw89_dev *rtwdev,
-				  struct rtw89_vif *rtwvif, u8 *cmd)
+				  struct rtw89_vif *rtwvif,
+				  struct rtw89_sta *rtwsta, u8 *cmd)
 {
 	struct ieee80211_vif *vif = rtwvif_to_vif(rtwvif);
-	struct rtw89_bssid_cam_entry *bssid_cam = &rtwvif->bssid_cam;
+	struct rtw89_bssid_cam_entry *bssid_cam = rtw89_get_bssid_cam_of(rtwvif, rtwsta);
 	u8 bss_color = vif->bss_conf.he_bss_color.color;
+	u8 bss_mask;
+
+	if (vif->bss_conf.nontransmitted)
+		bss_mask = RTW89_BSSID_MATCH_5_BYTES;
+	else
+		bss_mask = RTW89_BSSID_MATCH_ALL;
 
 	FWCMD_SET_ADDR_BSSID_IDX(cmd, bssid_cam->bssid_cam_idx);
 	FWCMD_SET_ADDR_BSSID_OFFSET(cmd, bssid_cam->offset);
 	FWCMD_SET_ADDR_BSSID_LEN(cmd, bssid_cam->len);
 	FWCMD_SET_ADDR_BSSID_VALID(cmd, bssid_cam->valid);
+	FWCMD_SET_ADDR_BSSID_MASK(cmd, bss_mask);
 	FWCMD_SET_ADDR_BSSID_BB_SEL(cmd, bssid_cam->phy_idx);
 	FWCMD_SET_ADDR_BSSID_BSS_COLOR(cmd, bss_color);
 
@@ -697,4 +748,93 @@ void rtw89_cam_fill_addr_cam_info(struct rtw89_dev *rtwdev,
 	FWCMD_SET_ADDR_SEC_ENT4(cmd, addr_cam->sec_ent[4]);
 	FWCMD_SET_ADDR_SEC_ENT5(cmd, addr_cam->sec_ent[5]);
 	FWCMD_SET_ADDR_SEC_ENT6(cmd, addr_cam->sec_ent[6]);
+}
+
+void rtw89_cam_fill_dctl_sec_cam_info_v1(struct rtw89_dev *rtwdev,
+					 struct rtw89_vif *rtwvif,
+					 struct rtw89_sta *rtwsta,
+					 u8 *cmd)
+{
+	struct rtw89_addr_cam_entry *addr_cam = rtw89_get_addr_cam_of(rtwvif, rtwsta);
+
+	SET_DCTL_MACID_V1(cmd, rtwsta ? rtwsta->mac_id : rtwvif->mac_id);
+	SET_DCTL_OPERATION_V1(cmd, 1);
+
+	SET_DCTL_SEC_ENT0_KEYID_V1(cmd, addr_cam->sec_ent_keyid[0]);
+	SET_DCTL_SEC_ENT1_KEYID_V1(cmd, addr_cam->sec_ent_keyid[1]);
+	SET_DCTL_SEC_ENT2_KEYID_V1(cmd, addr_cam->sec_ent_keyid[2]);
+	SET_DCTL_SEC_ENT3_KEYID_V1(cmd, addr_cam->sec_ent_keyid[3]);
+	SET_DCTL_SEC_ENT4_KEYID_V1(cmd, addr_cam->sec_ent_keyid[4]);
+	SET_DCTL_SEC_ENT5_KEYID_V1(cmd, addr_cam->sec_ent_keyid[5]);
+	SET_DCTL_SEC_ENT6_KEYID_V1(cmd, addr_cam->sec_ent_keyid[6]);
+
+	SET_DCTL_SEC_ENT_VALID_V1(cmd, addr_cam->sec_cam_map[0] & 0xff);
+	SET_DCTL_SEC_ENT0_V1(cmd, addr_cam->sec_ent[0]);
+	SET_DCTL_SEC_ENT1_V1(cmd, addr_cam->sec_ent[1]);
+	SET_DCTL_SEC_ENT2_V1(cmd, addr_cam->sec_ent[2]);
+	SET_DCTL_SEC_ENT3_V1(cmd, addr_cam->sec_ent[3]);
+	SET_DCTL_SEC_ENT4_V1(cmd, addr_cam->sec_ent[4]);
+	SET_DCTL_SEC_ENT5_V1(cmd, addr_cam->sec_ent[5]);
+	SET_DCTL_SEC_ENT6_V1(cmd, addr_cam->sec_ent[6]);
+}
+
+void rtw89_cam_fill_dctl_sec_cam_info_v2(struct rtw89_dev *rtwdev,
+					 struct rtw89_vif *rtwvif,
+					 struct rtw89_sta *rtwsta,
+					 struct rtw89_h2c_dctlinfo_ud_v2 *h2c)
+{
+	struct rtw89_addr_cam_entry *addr_cam = rtw89_get_addr_cam_of(rtwvif, rtwsta);
+
+	h2c->c0 = le32_encode_bits(rtwsta ? rtwsta->mac_id : rtwvif->mac_id,
+				   DCTLINFO_V2_C0_MACID) |
+		  le32_encode_bits(1, DCTLINFO_V2_C0_OP);
+
+	h2c->w4 = le32_encode_bits(addr_cam->sec_ent_keyid[0],
+				   DCTLINFO_V2_W4_SEC_ENT0_KEYID) |
+		  le32_encode_bits(addr_cam->sec_ent_keyid[1],
+				   DCTLINFO_V2_W4_SEC_ENT1_KEYID) |
+		  le32_encode_bits(addr_cam->sec_ent_keyid[2],
+				   DCTLINFO_V2_W4_SEC_ENT2_KEYID) |
+		  le32_encode_bits(addr_cam->sec_ent_keyid[3],
+				   DCTLINFO_V2_W4_SEC_ENT3_KEYID) |
+		  le32_encode_bits(addr_cam->sec_ent_keyid[4],
+				   DCTLINFO_V2_W4_SEC_ENT4_KEYID) |
+		  le32_encode_bits(addr_cam->sec_ent_keyid[5],
+				   DCTLINFO_V2_W4_SEC_ENT5_KEYID) |
+		  le32_encode_bits(addr_cam->sec_ent_keyid[6],
+				   DCTLINFO_V2_W4_SEC_ENT6_KEYID);
+	h2c->m4 = cpu_to_le32(DCTLINFO_V2_W4_SEC_ENT0_KEYID |
+			      DCTLINFO_V2_W4_SEC_ENT1_KEYID |
+			      DCTLINFO_V2_W4_SEC_ENT2_KEYID |
+			      DCTLINFO_V2_W4_SEC_ENT3_KEYID |
+			      DCTLINFO_V2_W4_SEC_ENT4_KEYID |
+			      DCTLINFO_V2_W4_SEC_ENT5_KEYID |
+			      DCTLINFO_V2_W4_SEC_ENT6_KEYID);
+
+	h2c->w5 = le32_encode_bits(addr_cam->sec_cam_map[0],
+				   DCTLINFO_V2_W5_SEC_ENT_VALID_V1) |
+		  le32_encode_bits(addr_cam->sec_ent[0],
+				   DCTLINFO_V2_W5_SEC_ENT0_V1);
+	h2c->m5 = cpu_to_le32(DCTLINFO_V2_W5_SEC_ENT_VALID_V1 |
+			      DCTLINFO_V2_W5_SEC_ENT0_V1);
+
+	h2c->w6 = le32_encode_bits(addr_cam->sec_ent[1],
+				   DCTLINFO_V2_W6_SEC_ENT1_V1) |
+		  le32_encode_bits(addr_cam->sec_ent[2],
+				   DCTLINFO_V2_W6_SEC_ENT2_V1) |
+		  le32_encode_bits(addr_cam->sec_ent[3],
+				   DCTLINFO_V2_W6_SEC_ENT3_V1) |
+		  le32_encode_bits(addr_cam->sec_ent[4],
+				   DCTLINFO_V2_W6_SEC_ENT4_V1);
+	h2c->m6 = cpu_to_le32(DCTLINFO_V2_W6_SEC_ENT1_V1 |
+			      DCTLINFO_V2_W6_SEC_ENT2_V1 |
+			      DCTLINFO_V2_W6_SEC_ENT3_V1 |
+			      DCTLINFO_V2_W6_SEC_ENT4_V1);
+
+	h2c->w7 = le32_encode_bits(addr_cam->sec_ent[5],
+				   DCTLINFO_V2_W7_SEC_ENT5_V1) |
+		  le32_encode_bits(addr_cam->sec_ent[6],
+				   DCTLINFO_V2_W7_SEC_ENT6_V1);
+	h2c->m7 = cpu_to_le32(DCTLINFO_V2_W7_SEC_ENT5_V1 |
+			      DCTLINFO_V2_W7_SEC_ENT6_V1);
 }
