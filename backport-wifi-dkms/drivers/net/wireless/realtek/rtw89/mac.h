@@ -903,6 +903,7 @@ struct rtw89_mac_gen_def {
 
 	struct rtw89_reg_def muedca_ctrl;
 	struct rtw89_reg_def bfee_ctrl;
+	struct rtw89_reg_def wow_ctrl;
 
 	int (*check_mac_en)(struct rtw89_dev *rtwdev, u8 band,
 			    enum rtw89_mac_hwmod_sel sel);

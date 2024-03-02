@@ -6201,6 +6201,7 @@ const struct rtw89_mac_gen_def rtw89_mac_gen_ax = {
 			B_AX_BFMEE_HE_NDPA_EN,
 	},
 
+	.wow_ctrl = {.addr = R_AX_WOW_CTRL, .mask = B_AX_WOW_WOWEN,},
 	.check_mac_en = rtw89_mac_check_mac_en_ax,
 	.sys_init = sys_init_ax,
 	.trx_init = trx_init_ax,
