@@ -311,6 +311,7 @@ enum btc_ant_phase {
 	BTC_ANT_W25G,
 	BTC_ANT_FREERUN,
 	BTC_ANT_WRFK,
+	BTC_ANT_WRFK2,
 	BTC_ANT_BRFK,
 	BTC_ANT_MAX
 };
@@ -613,6 +614,13 @@ enum btc_gnt_state {
 enum btc_ctr_path {
 	BTC_CTRL_BY_BT = 0,
 	BTC_CTRL_BY_WL
+};
+
+enum btc_wlact_state {
+	BTC_WLACT_HW = 0,
+	BTC_WLACT_SW_LO,
+	BTC_WLACT_SW_HI,
+	BTC_WLACT_MAX,
 };
 
 enum btc_wl_max_tx_time {
