@@ -2198,6 +2198,8 @@ const struct rtw_chip_info rtw8723d_hw_spec = {
 	.iqk_threshold = 8,
 	.ampdu_density = IEEE80211_HT_MPDU_DENSITY_16,
 	.max_scan_ie_len = IEEE80211_MAX_DATA_LEN,
+	.rfkill_init = {},
+	.rfkill_get = {},
 
 	.coex_para_ver = 0x2007022f,
 	.bt_desired_ver = 0x2f,

@@ -2579,6 +2579,8 @@ const struct rtw_chip_info rtw8822b_hw_spec = {
 	.l2h_th_ini_ad = -14 + EDCCA_IGI_BASE,
 	.ampdu_density = IEEE80211_HT_MPDU_DENSITY_2,
 	.max_scan_ie_len = IEEE80211_MAX_DATA_LEN,
+	.rfkill_init = {},
+	.rfkill_get = {},
 
 	.coex_para_ver = 0x20070206,
 	.bt_desired_ver = 0x6,

@@ -258,6 +258,7 @@ static void rtw_watch_dog_work(struct work_struct *work)
 	rtw_coex_query_bt_hid_list(rtwdev);
 
 	rtw_phy_dynamic_mechanism(rtwdev);
+	rtw_rfkill_poll(rtwdev, false);
 
 	data.rtwdev = rtwdev;
 	/* rtw_iterate_vifs internally uses an atomic iterator which is needed
@@ -2040,6 +2041,79 @@ static int rtw_chip_board_info_setup(struct rtw_dev *rtwdev)
 	return 0;
 }
 
+static bool rtw_chip_has_rfkill(struct rtw_dev *rtwdev)
+{
+	const struct rtw_chip_info *chip = rtwdev->chip;
+
+	switch (rtw_hci_type(rtwdev)) {
+	case RTW_HCI_TYPE_PCIE:
+		if (chip->id == RTW_CHIP_TYPE_8822C ||
+		    chip->id == RTW_CHIP_TYPE_8821C)
+			return true;
+		break;
+	default:
+		break;
+	}
+
+	return false;
+}
+
+static void rtw_rfkill_init(struct rtw_dev *rtwdev)
+{
+	const struct rtw_hw_reg3 *reg = &rtwdev->chip->rfkill_init;
+
+	rtw_write16_mask(rtwdev, reg->addr, reg->mask, reg->data);
+}
+
+static bool rtw_rfkill_get(struct rtw_dev *rtwdev)
+{
+	const struct rtw_hw_reg *reg = &rtwdev->chip->rfkill_get;
+
+	return !rtw_read8_mask(rtwdev, reg->addr, reg->mask);
+}
+
+static void rtw_rfkill_polling_init(struct rtw_dev *rtwdev)
+{
+	if (!rtw_chip_has_rfkill(rtwdev))
+		return;
+
+	rtw_rfkill_init(rtwdev);
+	rtw_rfkill_poll(rtwdev, true);
+	wiphy_rfkill_start_polling(rtwdev->hw->wiphy);
+}
+
+static void rtw_rfkill_polling_deinit(struct rtw_dev *rtwdev)
+{
+	if (!rtw_chip_has_rfkill(rtwdev))
+		return;
+
+	wiphy_rfkill_stop_polling(rtwdev->hw->wiphy);
+}
+
+void rtw_rfkill_poll(struct rtw_dev *rtwdev, bool force)
+{
+	bool prev, blocked;
+
+	if (!rtw_chip_has_rfkill(rtwdev))
+		return;
+
+	prev = test_bit(RTW_FLAG_HW_RFKILL_STATE, rtwdev->flags);
+	blocked = rtw_rfkill_get(rtwdev);
+
+	if (!force && prev == blocked)
+		return;
+
+	rtw_info(rtwdev, "rfkill hardware state changed to %s\n",
+		 blocked ? "disable" : "enable");
+
+	if (blocked)
+		set_bit(RTW_FLAG_HW_RFKILL_STATE, rtwdev->flags);
+	else
+		clear_bit(RTW_FLAG_HW_RFKILL_STATE, rtwdev->flags);
+
+	wiphy_rfkill_set_hw_state(rtwdev->hw->wiphy, blocked);
+}
+
 int rtw_chip_info_setup(struct rtw_dev *rtwdev)
 {
 	int ret;
@@ -2286,6 +2360,8 @@ int rtw_register_hw(struct rtw_dev *rtwdev, struct ieee80211_hw *hw)
 		return ret;
 	}
 
+	rtw_rfkill_polling_init(rtwdev);
+
 	rtw_debugfs_init(rtwdev);
 
 	rtwdev->bf_info.bfer_mu_cnt = 0;
@@ -2299,6 +2375,7 @@ void rtw_unregister_hw(struct rtw_dev *rtwdev, struct ieee80211_hw *hw)
 {
 	const struct rtw_chip_info *chip = rtwdev->chip;
 
+	rtw_rfkill_polling_deinit(rtwdev);
 	ieee80211_unregister_hw(hw);
 	rtw_unset_supported_band(hw, chip);
 }

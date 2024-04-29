@@ -850,6 +850,21 @@ static void rtw_ops_set_wakeup(struct ieee80211_hw *hw, bool enabled)
 }
 #endif
 
+static void rtw_ops_rfkill_poll(struct ieee80211_hw *hw)
+{
+	struct rtw_dev *rtwdev = hw->priv;
+
+	mutex_lock(&rtwdev->mutex);
+
+	if (test_bit(RTW_FLAG_RUNNING, rtwdev->flags))
+		goto out;
+
+	rtw_rfkill_poll(rtwdev, false);
+
+out:
+	mutex_unlock(&rtwdev->mutex);
+}
+
 static void rtw_reconfig_complete(struct ieee80211_hw *hw,
 				  enum ieee80211_reconfig_type reconfig_type)
 {
@@ -967,5 +982,6 @@ const struct ieee80211_ops rtw_ops = {
 	.resume			= rtw_ops_resume,
 	.set_wakeup		= rtw_ops_set_wakeup,
 #endif
+	.rfkill_poll		= rtw_ops_rfkill_poll,
 };
 EXPORT_SYMBOL(rtw_ops);

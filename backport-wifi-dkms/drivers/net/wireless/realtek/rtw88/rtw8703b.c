@@ -2051,6 +2051,8 @@ const struct rtw_chip_info rtw8703b_hw_spec = {
 	.wow_fw_name = "rtw88/rtw8703b_wow_fw.bin",
 	.wowlan_stub = NULL,
 	.max_scan_ie_len = IEEE80211_MAX_DATA_LEN,
+	.rfkill_init = {},
+	.rfkill_get = {},
 
 	/* Vendor driver has a time-based format, converted from
 	 * 20180330

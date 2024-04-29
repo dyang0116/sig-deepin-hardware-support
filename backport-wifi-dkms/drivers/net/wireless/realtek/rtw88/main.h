@@ -547,6 +547,7 @@ enum rtw_flags {
 	RTW_FLAG_RESTARTING,
 	RTW_FLAG_RESTART_TRIGGERING,
 	RTW_FLAG_FORCE_LOWEST_RATE,
+	RTW_FLAG_HW_RFKILL_STATE,
 
 	NUM_OF_RTW_FLAGS,
 };
@@ -702,6 +703,12 @@ struct rtw_channel_params {
 struct rtw_hw_reg {
 	u32 addr;
 	u32 mask;
+};
+
+struct rtw_hw_reg3 {
+	u32 addr;
+	u32 mask;
+	u32 data;
 };
 
 struct rtw_hw_reg_desc {
@@ -1426,6 +1433,8 @@ struct rtw_chip_info {
 	const struct wiphy_wowlan_support *wowlan_stub;
 	const u8 max_sched_scan_ssids;
 	const u16 max_scan_ie_len;
+	struct rtw_hw_reg3 rfkill_init;
+	struct rtw_hw_reg rfkill_get;
 
 	/* coex paras */
 	u32 coex_para_ver;
@@ -2354,6 +2363,7 @@ void rtw_core_scan_complete(struct rtw_dev *rtwdev, struct ieee80211_vif *vif,
 			    bool hw_scan);
 int rtw_core_start(struct rtw_dev *rtwdev);
 void rtw_core_stop(struct rtw_dev *rtwdev);
+void rtw_rfkill_poll(struct rtw_dev *rtwdev, bool force);
 int rtw_chip_info_setup(struct rtw_dev *rtwdev);
 int rtw_core_init(struct rtw_dev *rtwdev);
 void rtw_core_deinit(struct rtw_dev *rtwdev);

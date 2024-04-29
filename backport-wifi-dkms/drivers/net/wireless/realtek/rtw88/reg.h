@@ -71,6 +71,10 @@
 #define BIT_DPDT_WL_SEL		BIT(24)
 #define BIT_DPDT_SEL_EN		BIT(23)
 #define REG_LEDCFG2		0x004E
+#define REG_GPIO_EXT_CTRL	0x0060
+#define BIT_GPIO_MOD_9		BIT(25)
+#define BIT_GPIO_IO_SEL_9	BIT(17)
+#define BIT_GPIO_IN_9		BIT(1)
 #define REG_PAD_CTRL1		0x0064
 #define BIT_BT_BTG_SEL		BIT(31)
 #define BIT_PAPE_WLBT_SEL	BIT(29)

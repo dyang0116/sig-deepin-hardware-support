@@ -5410,6 +5410,10 @@ const struct rtw_chip_info rtw8822c_hw_spec = {
 	.max_sched_scan_ssids = 4,
 #endif
 	.max_scan_ie_len = (RTW_PROBE_PG_CNT - 1) * TX_PAGE_SIZE,
+	.rfkill_init = {REG_GPIO_EXT_CTRL + 2,
+			(BIT_GPIO_MOD_9 | BIT_GPIO_IO_SEL_9) >> 16, 0x0},
+	.rfkill_get = {REG_GPIO_EXT_CTRL, BIT_GPIO_IN_9},
+
 	.coex_para_ver = 0x22020720,
 	.bt_desired_ver = 0x20,
 	.scbd_support = true,

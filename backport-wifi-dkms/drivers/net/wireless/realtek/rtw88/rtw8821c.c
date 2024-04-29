@@ -2035,6 +2035,9 @@ const struct rtw_chip_info rtw8821c_hw_spec = {
 	.bfer_mu_max_num = 1,
 	.ampdu_density = IEEE80211_HT_MPDU_DENSITY_2,
 	.max_scan_ie_len = IEEE80211_MAX_DATA_LEN,
+	.rfkill_init = {REG_GPIO_EXT_CTRL + 2,
+			(BIT_GPIO_MOD_9 | BIT_GPIO_IO_SEL_9) >> 16, 0x0},
+	.rfkill_get = {REG_GPIO_EXT_CTRL, BIT_GPIO_IN_9},
 
 	.coex_para_ver = 0x19092746,
 	.bt_desired_ver = 0x46,
