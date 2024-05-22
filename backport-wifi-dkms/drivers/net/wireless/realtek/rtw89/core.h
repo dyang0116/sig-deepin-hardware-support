@@ -1074,6 +1074,8 @@ struct rtw89_rx_phy_ppdu {
 		u8 evm_max;
 		u8 evm_min;
 	} ofdm;
+	bool ldpc;
+	bool stbc;
 	bool to_self;
 	bool valid;
 };
