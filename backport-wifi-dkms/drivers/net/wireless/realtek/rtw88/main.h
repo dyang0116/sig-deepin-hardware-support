@@ -808,6 +808,7 @@ struct rtw_rx_pkt_stat {
 	bool crc_err;
 	bool decrypted;
 	bool is_c2h;
+	bool sgi;
 
 	s32 signal_power;
 	u16 pkt_len;
