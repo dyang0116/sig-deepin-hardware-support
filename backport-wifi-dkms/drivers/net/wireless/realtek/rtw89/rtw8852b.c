@@ -2460,6 +2460,19 @@ static void rtw8852b_query_ppdu(struct rtw89_dev *rtwdev,
 		rtw8852b_fill_freq_with_ppdu(rtwdev, phy_ppdu, status);
 }
 
+static void rtw8852b_convert_rpl_to_rssi(struct rtw89_dev *rtwdev,
+					 struct rtw89_rx_phy_ppdu *phy_ppdu)
+{
+	u8 delta = phy_ppdu->rpl_avg - phy_ppdu->rssi_avg;
+	u8 *rssi = phy_ppdu->rssi;
+	u8 i;
+
+	for (i = 0; i < rtwdev->chip->rf_path_num; i++)
+		rssi[i] += delta;
+
+	phy_ppdu->rssi_avg = phy_ppdu->rpl_avg;
+}
+
 static int rtw8852b_mac_enable_bb_rf(struct rtw89_dev *rtwdev)
 {
 	int ret;
@@ -2541,6 +2554,7 @@ static const struct rtw89_chip_ops rtw8852b_chip_ops = {
 	.get_thermal		= rtw8852b_get_thermal,
 	.ctrl_btg_bt_rx		= rtw8852b_ctrl_btg_bt_rx,
 	.query_ppdu		= rtw8852b_query_ppdu,
+	.convert_rpl_to_rssi	= rtw8852b_convert_rpl_to_rssi,
 	.ctrl_nbtg_bt_tx	= rtw8852b_ctrl_nbtg_bt_tx,
 	.cfg_txrx_path		= rtw8852b_bb_cfg_txrx_path,
 	.set_txpwr_ul_tb_offset	= rtw8852b_set_txpwr_ul_tb_offset,

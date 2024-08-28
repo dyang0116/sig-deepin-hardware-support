@@ -1592,6 +1592,38 @@ static void rtw8922a_query_ppdu(struct rtw89_dev *rtwdev,
 		rtw8922a_fill_freq_with_ppdu(rtwdev, phy_ppdu, status);
 }
 
+static void rtw8922a_convert_rpl_to_rssi(struct rtw89_dev *rtwdev,
+					 struct rtw89_rx_phy_ppdu *phy_ppdu)
+{
+	/* Mapping to BW: 5, 10, 20, 40, 80, 160, 80_80 */
+	static const u8 bw_compensate[] = {0, 0, 0, 6, 12, 18, 0};
+	u8 *rssi = phy_ppdu->rssi;
+	u8 compensate = 0;
+	u16 rpl_tmp;
+	u8 i;
+
+	if (phy_ppdu->bw_idx < ARRAY_SIZE(bw_compensate))
+		compensate = bw_compensate[phy_ppdu->bw_idx];
+
+	for (i = 0; i < RF_PATH_NUM_8922A; i++) {
+		if (!(phy_ppdu->rx_path_en & BIT(i))) {
+			rssi[i] = 0;
+			phy_ppdu->rpl_path[i] = 0;
+			phy_ppdu->rpl_fd[i] = 0;
+		}
+		if (phy_ppdu->rate >= RTW89_HW_RATE_OFDM6) {
+			rpl_tmp = phy_ppdu->rpl_fd[i];
+			if (rpl_tmp)
+				rpl_tmp += compensate;
+
+			phy_ppdu->rpl_path[i] = rpl_tmp;
+		}
+		rssi[i] = phy_ppdu->rpl_path[i];
+	}
+
+	phy_ppdu->rssi_avg = phy_ppdu->rpl_avg;
+}
+
 static int rtw8922a_mac_enable_bb_rf(struct rtw89_dev *rtwdev)
 {
 	rtw89_write8_set(rtwdev, R_BE_FEN_RST_ENABLE,
