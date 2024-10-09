@@ -401,7 +401,7 @@ static void rtw8852b_pwr_sps_ana(struct rtw89_dev *rtwdev)
 static int rtw8852b_pwr_on_func(struct rtw89_dev *rtwdev)
 {
 	u32 val32;
-	u32 ret;
+	int ret;
 
 	rtw89_write32_clr(rtwdev, R_AX_SYS_PW_CTRL, B_AX_AFSM_WLSUS_EN |
 						    B_AX_AFSM_PCIE_SUS_EN);
@@ -528,7 +528,7 @@ func_en:
 static int rtw8852b_pwr_off_func(struct rtw89_dev *rtwdev)
 {
 	u32 val32;
-	u32 ret;
+	int ret;
 
 	/* Only do once during probe stage after reading efuse */
 	if (!test_bit(RTW89_FLAG_PROBE_DONE, rtwdev->flags))
