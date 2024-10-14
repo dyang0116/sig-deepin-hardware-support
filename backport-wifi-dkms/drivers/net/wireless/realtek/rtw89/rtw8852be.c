@@ -46,6 +46,7 @@ static const struct rtw89_pci_info rtw8852b_pci_info = {
 	.rpwm_addr		= R_AX_PCIE_HRPWM,
 	.cpwm_addr		= R_AX_CPWM,
 	.mit_addr		= R_AX_INT_MIT_RX,
+	.wp_sel_addr		= 0,
 	.tx_dma_ch_mask		= BIT(RTW89_TXCH_ACH4) | BIT(RTW89_TXCH_ACH5) |
 				  BIT(RTW89_TXCH_ACH6) | BIT(RTW89_TXCH_ACH7) |
 				  BIT(RTW89_TXCH_CH10) | BIT(RTW89_TXCH_CH11),
@@ -76,6 +77,10 @@ static const struct pci_device_id rtw89_8852be_id_table[] = {
 	},
 	{
 		PCI_DEVICE_SUB(0x10EC, 0xB852, 0x1A3B, 0x5470),
+		.driver_data = (kernel_ulong_t)&rtw89_8852be_info,
+	},
+	{
+		PCI_DEVICE_SUB(0x10EC, 0xB852, 0x17AA, 0x4853),
 		.driver_data = (kernel_ulong_t)&rtw89_8852be_info,
 	},
 	{},

@@ -46,6 +46,7 @@ static const struct rtw89_pci_info rtw8922a_pci_info = {
 	.rpwm_addr		= R_BE_PCIE_HRPWM,
 	.cpwm_addr		= R_BE_PCIE_CRPWM,
 	.mit_addr		= R_BE_PCIE_MIT_CH_EN,
+	.wp_sel_addr		= R_BE_WP_ADDR_H_SEL0_3_V1,
 	.tx_dma_ch_mask		= 0,
 	.bd_idx_addr_low_power	= NULL,
 	.dma_addr_set		= &rtw89_pci_ch_dma_addr_set_be,
@@ -69,7 +70,15 @@ static const struct rtw89_driver_info rtw89_8922ae_info = {
 
 static const struct pci_device_id rtw89_8922ae_id_table[] = {
 	{
-		PCI_DEVICE(PCI_VENDOR_ID_REALTEK, 0x8922),
+		PCI_DEVICE_SUB(0x8922, 0x8922, 0x8922, 0x8922),
+		.driver_data = (kernel_ulong_t)&rtw89_8922ae_info,
+	},
+	{
+		PCI_DEVICE_SUB(0x10EC, 0x8922, 0x1A3B, 0x6010),
+		.driver_data = (kernel_ulong_t)&rtw89_8922ae_info,
+	},
+	{
+		PCI_DEVICE_SUB(0x10EC, 0x8922, 0x17AA, 0x4922),
 		.driver_data = (kernel_ulong_t)&rtw89_8922ae_info,
 	},
 	{},
