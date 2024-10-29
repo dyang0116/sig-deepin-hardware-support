@@ -23,6 +23,10 @@ static bool rtw89_disable_ps_mode;
 module_param_named(disable_ps_mode, rtw89_disable_ps_mode, bool, 0644);
 MODULE_PARM_DESC(disable_ps_mode, "Set Y to disable low power mode");
 
+static bool rtw89_disable_pwr_lmt;
+module_param_named(disable_pwr_lmt, rtw89_disable_pwr_lmt, bool, 0644);
+MODULE_PARM_DESC(disable_pwr_lmt, "Set Y to disable power limit");
+
 #define RTW89_DEF_CHAN(_freq, _hw_val, _flags, _band)	\
 	{ .center_freq = _freq, .hw_value = _hw_val, .flags = _flags, .band = _band, }
 #define RTW89_DEF_CHAN_2G(_freq, _hw_val)	\
@@ -420,6 +424,11 @@ void rtw89_set_channel(struct rtw89_dev *rtwdev)
 	chip->ops->set_channel(rtwdev, chan, mac_idx, phy_idx);
 
 	chip->ops->set_txpwr(rtwdev, chan, phy_idx);
+
+	if (rtw89_disable_pwr_lmt) {
+		rtw89_write32(rtwdev, 0xd208, 0x00000000);
+		rtw89_info(rtwdev, "[0xd208]: %08x", rtw89_read32(rtwdev, 0xd208));
+	}
 
 	rtw89_chip_set_channel_done(rtwdev, &bak, chan, mac_idx, phy_idx);
 
@@ -824,6 +833,8 @@ rtw89_core_tx_update_data_info(struct rtw89_dev *rtwdev,
 	desc_info->mac_id = rtw89_core_tx_get_mac_id(rtwdev, tx_req);
 	desc_info->port = desc_info->hiq ? rtwvif->port : 0;
 	desc_info->er_cap = rtwsta ? rtwsta->er_cap : false;
+	desc_info->stbc = rtwsta ? rtwsta->ra.stbc_cap : false;
+	desc_info->ldpc = rtwsta ? rtwsta->ra.ldpc_cap : false;
 
 	/* enable wd_info for AMPDU */
 	desc_info->en_wd_info = true;
@@ -1138,6 +1149,8 @@ static __le32 rtw89_build_txwd_info0(struct rtw89_tx_desc_info *desc_info)
 {
 	u32 dword = FIELD_PREP(RTW89_TXWD_INFO0_USE_RATE, desc_info->use_rate) |
 		    FIELD_PREP(RTW89_TXWD_INFO0_DATA_RATE, desc_info->data_rate) |
+		    FIELD_PREP(RTW89_TXWD_INFO0_DATA_STBC, desc_info->stbc) |
+		    FIELD_PREP(RTW89_TXWD_INFO0_DATA_LDPC, desc_info->ldpc) |
 		    FIELD_PREP(RTW89_TXWD_INFO0_DISDATAFB, desc_info->dis_data_fb) |
 		    FIELD_PREP(RTW89_TXWD_INFO0_MULTIPORT_ID, desc_info->port);
 
@@ -1146,7 +1159,9 @@ static __le32 rtw89_build_txwd_info0(struct rtw89_tx_desc_info *desc_info)
 
 static __le32 rtw89_build_txwd_info0_v1(struct rtw89_tx_desc_info *desc_info)
 {
-	u32 dword = FIELD_PREP(RTW89_TXWD_INFO0_DISDATAFB, desc_info->dis_data_fb) |
+	u32 dword = FIELD_PREP(RTW89_TXWD_INFO0_DATA_STBC, desc_info->stbc) |
+		    FIELD_PREP(RTW89_TXWD_INFO0_DATA_LDPC, desc_info->ldpc) |
+		    FIELD_PREP(RTW89_TXWD_INFO0_DISDATAFB, desc_info->dis_data_fb) |
 		    FIELD_PREP(RTW89_TXWD_INFO0_MULTIPORT_ID, desc_info->port) |
 		    FIELD_PREP(RTW89_TXWD_INFO0_DATA_ER, desc_info->er_cap) |
 		    FIELD_PREP(RTW89_TXWD_INFO0_DATA_BW_ER, 0);
@@ -1312,7 +1327,9 @@ static __le32 rtw89_build_txwd_body7_v2(struct rtw89_tx_desc_info *desc_info)
 
 static __le32 rtw89_build_txwd_info0_v2(struct rtw89_tx_desc_info *desc_info)
 {
-	u32 dword = FIELD_PREP(BE_TXD_INFO0_DISDATAFB, desc_info->dis_data_fb) |
+	u32 dword = FIELD_PREP(BE_TXD_INFO0_DATA_STBC, desc_info->stbc) |
+		    FIELD_PREP(BE_TXD_INFO0_DATA_LDPC, desc_info->ldpc) |
+		    FIELD_PREP(BE_TXD_INFO0_DISDATAFB, desc_info->dis_data_fb) |
 		    FIELD_PREP(BE_TXD_INFO0_MULTIPORT_ID, desc_info->port);
 
 	return cpu_to_le32(dword);
@@ -1560,6 +1577,12 @@ static void rtw89_core_parse_phy_status_ie01(struct rtw89_dev *rtwdev,
 	u32 t;
 
 	phy_ppdu->chan_idx = le32_get_bits(ie->w0, RTW89_PHY_STS_IE01_W0_CH_IDX);
+
+	if (rtwdev->hw->conf.flags & IEEE80211_CONF_MONITOR) {
+		phy_ppdu->ldpc = le32_get_bits(ie->w2, RTW89_PHY_STS_IE01_W2_LDPC);
+		phy_ppdu->stbc = le32_get_bits(ie->w2, RTW89_PHY_STS_IE01_W2_STBC);
+	}
+
 	if (phy_ppdu->rate < RTW89_HW_RATE_OFDM6)
 		return;
 
@@ -1985,6 +2008,22 @@ static void rtw89_core_hw_to_sband_rate(struct ieee80211_rx_status *rx_status)
 	rx_status->rate_idx -= 4;
 }
 
+static
+void rtw89_core_update_rx_status_by_ppdu(struct rtw89_dev *rtwdev,
+					 struct ieee80211_rx_status *rx_status,
+					 struct rtw89_rx_phy_ppdu *phy_ppdu)
+{
+	if (!(rtwdev->hw->conf.flags & IEEE80211_CONF_MONITOR))
+		return;
+
+	if (!phy_ppdu)
+		return;
+
+	if (phy_ppdu->ldpc)
+		rx_status->enc_flags |= RX_ENC_FLAG_LDPC;
+	if (phy_ppdu->stbc)
+		rx_status->enc_flags |= u8_encode_bits(1, RX_ENC_FLAG_STBC_MASK);
+}
 
 static void rtw89_core_update_radiotap(struct rtw89_dev *rtwdev,
 				       struct sk_buff *skb,
@@ -1992,6 +2031,8 @@ static void rtw89_core_update_radiotap(struct rtw89_dev *rtwdev,
 {
 	static const struct ieee80211_radiotap_he known_he = {
 		.data1 = cpu_to_le16(IEEE80211_RADIOTAP_HE_DATA1_DATA_MCS_KNOWN |
+				     IEEE80211_RADIOTAP_HE_DATA1_CODING_KNOWN |
+				     IEEE80211_RADIOTAP_HE_DATA1_STBC_KNOWN |
 				     IEEE80211_RADIOTAP_HE_DATA1_BW_RU_ALLOC_KNOWN),
 		.data2 = cpu_to_le16(IEEE80211_RADIOTAP_HE_DATA2_GI_KNOWN),
 	};
@@ -2021,6 +2062,7 @@ static void rtw89_core_rx_to_mac80211(struct rtw89_dev *rtwdev,
 
 	rtw89_core_hw_to_sband_rate(rx_status);
 	rtw89_core_rx_stats(rtwdev, phy_ppdu, desc_info, skb_ppdu);
+	rtw89_core_update_rx_status_by_ppdu(rtwdev, rx_status, phy_ppdu);
 	rtw89_core_update_radiotap(rtwdev, skb_ppdu, rx_status);
 	/* In low power mode, it does RX in thread context. */
 	local_bh_disable();
@@ -4415,6 +4457,10 @@ static int rtw89_core_register_hw(struct rtw89_dev *rtwdev)
 	hw->max_rx_aggregation_subframes = RTW89_MAX_RX_AGG_NUM;
 	hw->max_tx_aggregation_subframes = RTW89_MAX_TX_AGG_NUM;
 	hw->uapsd_max_sp_len = IEEE80211_WMM_IE_STA_QOSINFO_SP_ALL;
+
+	hw->radiotap_mcs_details |= IEEE80211_RADIOTAP_MCS_HAVE_FEC |
+				    IEEE80211_RADIOTAP_MCS_HAVE_STBC;
+	hw->radiotap_vht_details |= IEEE80211_RADIOTAP_VHT_KNOWN_STBC;
 
 	ieee80211_hw_set(hw, SIGNAL_DBM);
 	ieee80211_hw_set(hw, HAS_RATE_CONTROL);

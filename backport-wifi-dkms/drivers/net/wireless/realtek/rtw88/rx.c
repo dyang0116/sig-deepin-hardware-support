@@ -119,6 +119,8 @@ static void rtw_rx_addr_match_iter(void *data, u8 *mac,
 
 	si = (struct rtw_sta_info *)sta->drv_priv;
 	ewma_rssi_add(&si->avg_rssi, pkt_stat->rssi);
+
+	pkt_stat->sgi = !!(si->ra_report.txrate.flags & RATE_INFO_FLAGS_SHORT_GI);
 }
 
 static void rtw_rx_addr_match(struct rtw_dev *rtwdev,
@@ -201,5 +203,12 @@ void rtw_rx_fill_rx_status(struct rtw_dev *rtwdev,
 	}
 
 	rtw_rx_addr_match(rtwdev, pkt_stat, hdr);
+
+	if (rx_status->encoding == RX_ENC_VHT && rx_status->rate_idx >= 8)
+		rx_status->enc_flags |= RX_ENC_FLAG_SHORT_GI;
+	else if (rx_status->encoding == RX_ENC_HT && (rx_status->rate_idx & 0x7) >= 6)
+		rx_status->enc_flags |= RX_ENC_FLAG_SHORT_GI;
+	else if (pkt_stat->sgi)
+		rx_status->enc_flags |= RX_ENC_FLAG_SHORT_GI;
 }
 EXPORT_SYMBOL(rtw_rx_fill_rx_status);
