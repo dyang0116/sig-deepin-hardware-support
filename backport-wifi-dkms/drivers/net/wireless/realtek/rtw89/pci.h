@@ -1240,6 +1240,7 @@ struct rtw89_pci_gen_def {
 
 	int (*lv1rst_stop_dma)(struct rtw89_dev *rtwdev);
 	int (*lv1rst_start_dma)(struct rtw89_dev *rtwdev);
+	void (*power_wake)(struct rtw89_dev *rtwdev, bool pwr_up);
 };
 
 struct rtw89_pci_info {
@@ -1704,6 +1705,14 @@ static inline int rtw89_pci_reset_bdram(struct rtw89_dev *rtwdev)
 	const struct rtw89_pci_gen_def *gen_def = info->gen_def;
 
 	return gen_def->rst_bdram(rtwdev);
+}
+
+static inline void rtw89_pci_power_wake(struct rtw89_dev *rtwdev, bool pwr_up)
+{
+	const struct rtw89_pci_info *info = rtwdev->pci_info;
+	const struct rtw89_pci_gen_def *gen_def = info->gen_def;
+
+	gen_def->power_wake(rtwdev, pwr_up);
 }
 
 #endif
