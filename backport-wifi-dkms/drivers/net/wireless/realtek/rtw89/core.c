@@ -27,6 +27,10 @@ static bool rtw89_disable_pwr_lmt;
 module_param_named(disable_pwr_lmt, rtw89_disable_pwr_lmt, bool, 0644);
 MODULE_PARM_DESC(disable_pwr_lmt, "Set Y to disable power limit");
 
+static bool rtw89_disable_rts_11b;
+module_param_named(disable_rts_11b, rtw89_disable_rts_11b, bool, 0644);
+MODULE_PARM_DESC(disable_rts_11b, "Set Y to disable rts/cts setting");
+
 #define RTW89_DEF_CHAN(_freq, _hw_val, _flags, _band)	\
 	{ .center_freq = _freq, .hw_value = _hw_val, .flags = _flags, .band = _band, }
 #define RTW89_DEF_CHAN_2G(_freq, _hw_val)	\
@@ -836,6 +840,13 @@ rtw89_core_tx_update_data_info(struct rtw89_dev *rtwdev,
 	desc_info->stbc = rtwsta ? rtwsta->ra.stbc_cap : false;
 	desc_info->ldpc = rtwsta ? rtwsta->ra.ldpc_cap : false;
 
+	if (rtw89_disable_rts_11b) {
+		struct rate_info *rate = &rtwsta->ra_report.txrate;
+
+		if (!rate->flags && rate->legacy <= 110)
+			desc_info->rts_dis = true;
+	}
+
 	/* enable wd_info for AMPDU */
 	desc_info->en_wd_info = true;
 
@@ -1200,7 +1211,7 @@ static __le32 rtw89_build_txwd_info2_v1(struct rtw89_tx_desc_info *desc_info)
 
 static __le32 rtw89_build_txwd_info4(struct rtw89_tx_desc_info *desc_info)
 {
-	bool rts_en = !desc_info->is_bmc;
+	bool rts_en = !desc_info->is_bmc && !desc_info->rts_dis;
 	u32 dword = FIELD_PREP(RTW89_TXWD_INFO4_RTS_EN, rts_en) |
 		    FIELD_PREP(RTW89_TXWD_INFO4_HW_RTS_EN, 1);
 
