@@ -3037,6 +3037,7 @@ static void rtw89_pci_cfg_dac(struct rtw89_dev *rtwdev)
 	switch (chip->chip_id) {
 	case RTL8852A:
 	case RTL8852B:
+	case RTL8852BT:
 	case RTL8851B:
 		break;
 	default:
