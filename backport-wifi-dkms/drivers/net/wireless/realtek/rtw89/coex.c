@@ -258,6 +258,7 @@ static u32 chip_id_to_bt_rom_code_id(u32 id)
 	case RTL8852A:
 	case RTL8852B:
 	case RTL8852C:
+	case RTL8852BT:
 		return 0x8852;
 	case RTL8851B:
 		return 0x8851;
